@@ -1,0 +1,124 @@
+openapi: 3.1.0
+info:
+  title: LyNote API
+  version: 0.1.0
+  description: Personal knowledge graph workbench. Skeleton freeze — do not rename fields.
+servers:
+  - url: http://127.0.0.1:8000
+paths:
+  /health:
+    get:
+      summary: Liveness
+      responses:
+        "200":
+          description: OK
+  /v1/workbench:
+    get:
+      summary: Snapshot for the three-pane shell
+      responses:
+        "200":
+          description: Workbench
+  /v1/goals:
+    get:
+      summary: List goals
+    post:
+      summary: Create a goal
+  /v1/sources:
+    post:
+      summary: Ingest a source. URL/markdown/pdf are resolved to text. Does not write claims.
+  /v1/sources/upload:
+    post:
+      summary: Upload .md / .txt / .html / .pdf / audio / video. Extracts text only. Gate result lands in inbox.
+  /v1/notes:
+    post:
+      summary: Scratch note. User text is the source. Still gated. Extract uses the note as source_span.
+  /v1/plays/run:
+    post:
+      summary: Run a built-in play (read_article / after_meeting). Orchestrates existing ingest or scratch. Sets today's retrieve context: read_article boosts concept/opposition claims, after_meeting boosts unreviewed-decision and working-note claims. Never auto-accepts, hangs, or commits. Optional compose_brief on after_meeting uses existing claims only.
+  /v1/hangs/confirm:
+    post:
+      summary: Human-confirmed hang onto an existing concept/goal, or onto a new concept whose name already appears in the source and was proposed at extract. Does not auto-create chapters.
+  /v1/concepts/merge:
+    post:
+      summary: Merge a concept into another. Adds alias, rewrites edges, does not fuse conflicting claims.
+  /v1/claims/{claim_id}/touch:
+    post:
+      summary: Mark a confirmed claim as used. Raises retrieve weight and schedules review. Does not invent claims. Coalesces repeats within ten minutes.
+  /v1/claims/{claim_id}/layer:
+    post:
+      summary: Human override of keep/lookup packing. Does not invent claims. Candidate or spanless claims cannot be marked keep. Null clears the override.
+  /v1/claims/{claim_id}/deprecate:
+    post:
+      summary: Mark a claim deprecated so retrieve skips it. History stays.
+  /v1/profile:
+    get:
+      summary: Preference sidecar. Not knowledge.
+    put:
+      summary: Update preference sidecar. Cannot fill unknowns.
+  /v1/report/weekly:
+    get:
+      summary: Weekly markdown citing existing node ids only.
+  /v1/inbox/{item_id}/accept:
+    post:
+      summary: Human accept. Extract may then write claims with evidence.
+  /v1/inbox/{item_id}/reject:
+    post:
+      summary: Human reject. Source stays, graph is untouched.
+  /v1/graph:
+    get:
+      summary: Nodes and relations for the canvas
+  /v1/graph/nodes/{node_id}:
+    get:
+      summary: Inspect a node with locatable evidence excerpts. Does not invent source_span.
+  /v1/relations:
+    post:
+      summary: Human-confirmed related_to between two existing concept/claim nodes. Does not invent nodes or other relation types.
+  /v1/search:
+    get:
+      summary: Topic-scoped knowledge search. Groups concepts, claims, and sources. Claims are ordered keep-then-lookup. Empty means unknown — does not invent nodes.
+  /v1/chat:
+    post:
+      summary: Grounded learn-lane chat over a retrieve subgraph. Isolated from decision-brief messages. Answers in keep/lookup/evidence/related/unknown sections, then asks one probe. Along existing edges, names the same class of tradeoff; no edge means stop. Cites claim ids or marks unknowns. Empty keep does not invent a principle.
+  /v1/probes/{probe_id}/grade:
+    post:
+      summary: Grade a probe against graph claims only. Verdicts are correct / gap / contrary. Gap/contrary write a Misconception hung on the correct claim.
+  /v1/misconceptions/{misconception_id}/resolve:
+    post:
+      summary: Mark a misconception resolved. Node stays on the graph.
+  /v1/learn:
+    get:
+      summary: Topic mastery dashboard. Depth/breadth, contrast cards, due reviews, and gap advice. Does not invent claims.
+  /v1/learn/reviews:
+    post:
+      summary: Start a spaced-review probe on a weak confirmed claim. Grades through the existing probe endpoint.
+  /v1/learn/capture:
+    post:
+      summary: Human-confirmed attach of cited claims onto a chapter concept. Does not invent claims.
+  /v1/briefs/compose:
+    post:
+      summary: Build a one-page decision brief from the current goal and retrieve subgraph.
+  /v1/briefs/{brief_id}/commit:
+    post:
+      summary: Commit a decision option back onto the graph
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [option_id]
+              properties:
+                option_id: { type: string }
+                rationale: { type: string }
+  /v1/briefs/{brief_id}/review:
+    post:
+      summary: Write the real-world outcome back onto a committed decision
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [outcome]
+              properties:
+                outcome: { type: string }

@@ -1,0 +1,9 @@
+{
+  "name": "lynote-api",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "start": "node ./run-api.cjs",
+    "install:py": "python -m venv .venv && node ./run-api.cjs --install"
+  }
+}

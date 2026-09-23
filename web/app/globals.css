@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+  background: #14110e;
+}
+
+body {
+  margin: 0;
+  color: #efe6d6;
+  font-family: "Schibsted Grotesk", system-ui, sans-serif;
+}
+
+.react-flow__attribution {
+  display: none;
+}
+
+.react-flow__controls {
+  box-shadow: none !important;
+  border: 1px solid #3b342b;
+  overflow: hidden;
+}
+
+.react-flow__controls-button {
+  background: #1d1914 !important;
+  border-bottom: 1px solid #3b342b !important;
+  fill: #efe6d6 !important;
+}
+
+.react-flow__controls-button:hover {
+  background: #26211b !important;
+}

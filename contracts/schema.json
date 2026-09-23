@@ -1,0 +1,693 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lynote.dev/contracts/schema.json",
+  "title": "LyNote contracts",
+  "description": "Minimal personal knowledge graph. Claims are first-class and must carry evidence.",
+  "$defs": {
+    "NodeKind": {
+      "type": "string",
+      "enum": ["source", "concept", "claim", "goal", "decision", "misconception"]
+    },
+    "SourceKind": {
+      "type": "string",
+      "enum": ["markdown", "pdf", "url", "note", "audio", "video"]
+    },
+    "ClaimPolarity": {
+      "type": "string",
+      "enum": ["asserts", "denies", "uncertain"]
+    },
+    "ClaimStatus": {
+      "type": "string",
+      "enum": ["candidate", "confirmed", "disputed", "deprecated"]
+    },
+    "GoalStatus": {
+      "type": "string",
+      "enum": ["active", "paused", "resolved"]
+    },
+    "DecisionStatus": {
+      "type": "string",
+      "enum": ["draft", "committed", "reviewed"]
+    },
+    "InboxStatus": {
+      "type": "string",
+      "enum": ["pending", "accepted", "rejected"]
+    },
+    "GateName": {
+      "type": "string",
+      "enum": ["goal_alignment", "quality", "novelty", "actionability", "maintenance_cost"]
+    },
+    "GateVerdict": {
+      "type": "string",
+      "enum": ["accept", "reject", "review"]
+    },
+    "RelationType": {
+      "type": "string",
+      "enum": [
+        "about",
+        "belongs_to",
+        "supports",
+        "contradicts",
+        "evidenced_by",
+        "decides",
+        "related_to"
+      ]
+    },
+    "Evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id"],
+      "properties": {
+        "source_id": { "type": "string" },
+        "quote": { "type": "string" },
+        "source_span": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "start": { "type": "integer", "minimum": 0 },
+            "end": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "Source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "title", "created_at"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "$ref": "#/$defs/SourceKind" },
+        "title": { "type": "string" },
+        "uri": { "type": "string" },
+        "text": { "type": "string" },
+        "created_at": { "type": "string" },
+        "credibility": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "Concept": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "aliases": { "type": "array", "items": { "type": "string" } },
+        "definition": { "type": "string" },
+        "domain": { "type": "string" }
+      }
+    },
+    "Claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "text", "polarity", "confidence", "status", "evidence"],
+      "properties": {
+        "id": { "type": "string" },
+        "text": { "type": "string" },
+        "polarity": { "$ref": "#/$defs/ClaimPolarity" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "as_of": { "type": "string" },
+        "status": { "$ref": "#/$defs/ClaimStatus" },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/Evidence" }
+        },
+        "opposed_claim_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "Misconception": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "text", "claim_id", "goal_id", "count", "last_seen_at", "status", "verdict"],
+      "properties": {
+        "id": { "type": "string" },
+        "text": { "type": "string" },
+        "claim_id": { "type": "string" },
+        "goal_id": { "type": "string" },
+        "count": { "type": "integer", "minimum": 1 },
+        "correct_streak": { "type": "integer", "minimum": 0 },
+        "last_seen_at": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "resolved"] },
+        "verdict": { "type": "string", "enum": ["gap", "contrary"] }
+      }
+    },
+    "MisconceptionRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "text", "claim_id", "count", "status"],
+      "properties": {
+        "id": { "type": "string" },
+        "text": { "type": "string" },
+        "claim_id": { "type": "string" },
+        "claim_label": { "type": "string" },
+        "count": { "type": "integer" },
+        "status": { "type": "string" },
+        "verdict": { "type": "string" }
+      }
+    },
+    "Goal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "question", "status"],
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "question": { "type": "string" },
+        "status": { "$ref": "#/$defs/GoalStatus" }
+      }
+    },
+    "DecisionOption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "summary"],
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "summary": { "type": "string" },
+        "supporting_claim_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "Decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "goal_id", "question", "options", "status"],
+      "properties": {
+        "id": { "type": "string" },
+        "goal_id": { "type": "string" },
+        "question": { "type": "string" },
+        "options": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/DecisionOption" }
+        },
+        "chosen_option_id": { "type": "string" },
+        "rationale": { "type": "string" },
+        "outcome": { "type": "string" },
+        "status": { "$ref": "#/$defs/DecisionStatus" }
+      }
+    },
+    "Relation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "from_id", "to_id", "type"],
+      "properties": {
+        "id": { "type": "string" },
+        "from_id": { "type": "string" },
+        "to_id": { "type": "string" },
+        "type": { "$ref": "#/$defs/RelationType" },
+        "weight": { "type": "number" },
+        "source_id": { "type": "string" }
+      }
+    },
+    "GateCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gate", "passed", "note"],
+      "properties": {
+        "gate": { "$ref": "#/$defs/GateName" },
+        "passed": { "type": "boolean" },
+        "note": { "type": "string" }
+      }
+    },
+    "InboxItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "source_id", "title", "snippet", "status", "verdict", "checks"],
+      "properties": {
+        "id": { "type": "string" },
+        "source_id": { "type": "string" },
+        "title": { "type": "string" },
+        "snippet": { "type": "string" },
+        "status": { "$ref": "#/$defs/InboxStatus" },
+        "verdict": { "$ref": "#/$defs/GateVerdict" },
+        "checks": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/GateCheck" }
+        },
+        "gap_score": { "type": "number" },
+        "gap_note": { "type": "string" }
+      }
+    },
+    "GraphNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "label"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "$ref": "#/$defs/NodeKind" },
+        "label": { "type": "string" },
+        "subtitle": { "type": "string" },
+        "status": { "type": "string" }
+      }
+    },
+    "EvidenceExcerpt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "source_title", "aligned"],
+      "properties": {
+        "claim_id": { "type": "string" },
+        "claim_text": { "type": "string" },
+        "source_id": { "type": "string" },
+        "source_title": { "type": "string" },
+        "quote": { "type": "string" },
+        "source_span": { "$ref": "#/$defs/SourceSpan" },
+        "aligned": { "type": "boolean" },
+        "before": { "type": "string" },
+        "hit": { "type": "string" },
+        "after": { "type": "string" },
+        "note": { "type": "string" }
+      }
+    },
+    "SourceSpan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end"],
+      "properties": {
+        "start": { "type": "integer", "minimum": 0 },
+        "end": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "NodeDetail": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "label"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "$ref": "#/$defs/NodeKind" },
+        "label": { "type": "string" },
+        "status": { "type": "string" },
+        "summary": { "type": "string" },
+        "polarity": { "type": "string" },
+        "confidence": { "type": "number" },
+        "definition": { "type": "string" },
+        "aliases": { "type": "array", "items": { "type": "string" } },
+        "domain": { "type": "string" },
+        "uri": { "type": "string" },
+        "body": { "type": "string" },
+        "question": { "type": "string" },
+        "options": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/DecisionOption" }
+        },
+        "chosen_option_id": { "type": "string" },
+        "rationale": { "type": "string" },
+        "outcome": { "type": "string" },
+        "opposed_claim_ids": { "type": "array", "items": { "type": "string" } },
+        "claim_id": { "type": "string" },
+        "count": { "type": "integer" },
+        "verdict": { "type": "string" },
+        "excerpts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/EvidenceExcerpt" }
+        },
+        "neighbors": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/GraphNode" }
+        }
+      }
+    },
+    "DecisionBrief": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "decision_id",
+        "question",
+        "options",
+        "evidence_claim_ids",
+        "unknowns",
+        "skeptic"
+      ],
+      "properties": {
+        "id": { "type": "string" },
+        "decision_id": { "type": "string" },
+        "question": { "type": "string" },
+        "options": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/DecisionOption" }
+        },
+        "evidence_claim_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "unknowns": { "type": "array", "items": { "type": "string" } },
+        "skeptic": { "type": "string" },
+        "recommendation": { "type": "string" },
+        "chosen_option_id": { "type": "string" },
+        "rationale": { "type": "string" },
+        "outcome": { "type": "string" }
+      }
+    },
+    "GroundedRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "label"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "$ref": "#/$defs/NodeKind" },
+        "label": { "type": "string" },
+        "status": { "type": "string" },
+        "quote": { "type": "string" },
+        "source_id": { "type": "string" },
+        "relation": { "type": "string" },
+        "layer": { "type": "string", "enum": ["keep", "lookup"] }
+      }
+    },
+    "LinkCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from_id", "to_id", "from_kind", "to_kind", "from_label", "to_label"],
+      "properties": {
+        "from_id": { "type": "string" },
+        "to_id": { "type": "string" },
+        "from_kind": { "$ref": "#/$defs/NodeKind" },
+        "to_kind": { "$ref": "#/$defs/NodeKind" },
+        "from_label": { "type": "string" },
+        "to_label": { "type": "string" }
+      }
+    },
+    "GroundedAnswer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["direct", "evidence", "related", "unknowns"],
+      "properties": {
+        "direct": { "type": "array", "items": { "$ref": "#/$defs/GroundedRef" } },
+        "lookup": { "type": "array", "items": { "$ref": "#/$defs/GroundedRef" } },
+        "evidence": { "type": "array", "items": { "$ref": "#/$defs/GroundedRef" } },
+        "related": { "type": "array", "items": { "$ref": "#/$defs/GroundedRef" } },
+        "unknowns": { "type": "array", "items": { "type": "string" } },
+        "unlinked": { "type": "boolean" },
+        "link_candidates": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/LinkCandidate" }
+        },
+        "transfers": { "type": "array", "items": { "$ref": "#/$defs/TransferRef" } },
+        "cross_topic": { "type": "array" },
+        "prior_decisions": { "type": "array" }
+      }
+    },
+    "TransferRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from_id", "from_label", "to_id", "to_label"],
+      "properties": {
+        "from_id": { "type": "string" },
+        "from_label": { "type": "string" },
+        "to_id": { "type": "string" },
+        "to_label": { "type": "string" },
+        "path_ids": { "type": "array", "items": { "type": "string" } },
+        "reason": { "type": "string" }
+      }
+    },
+    "ProbeOption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label"],
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "claim_id": { "type": "string" }
+      }
+    },
+    "Probe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "prompt", "kind", "target_claim_id", "status"],
+      "properties": {
+        "id": { "type": "string" },
+        "prompt": { "type": "string" },
+        "kind": { "type": "string", "enum": ["choice", "short"] },
+        "target_claim_id": { "type": "string" },
+        "options": { "type": "array", "items": { "$ref": "#/$defs/ProbeOption" } },
+        "status": { "type": "string", "enum": ["open", "graded"] }
+      }
+    },
+    "ProbeGrade": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verdict", "target_claim_id", "cited_claim_ids", "correction"],
+      "properties": {
+        "verdict": { "type": "string", "enum": ["correct", "gap", "contrary"] },
+        "selected_option_id": { "type": "string" },
+        "answer_text": { "type": "string" },
+        "misconception_id": { "type": "string" },
+        "target_claim_id": { "type": "string" },
+        "cited_claim_ids": { "type": "array", "items": { "type": "string" } },
+        "correction": { "type": "string" }
+      }
+    },
+    "ChatMessage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "role", "content"],
+      "properties": {
+        "id": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "assistant"] },
+        "content": { "type": "string" },
+        "claim_ids": { "type": "array", "items": { "type": "string" } },
+        "unknowns": { "type": "array", "items": { "type": "string" } },
+        "grounded": { "anyOf": [{ "$ref": "#/$defs/GroundedAnswer" }, { "type": "null" }] },
+        "probe": { "anyOf": [{ "$ref": "#/$defs/Probe" }, { "type": "null" }] },
+        "grade": { "anyOf": [{ "$ref": "#/$defs/ProbeGrade" }, { "type": "null" }] },
+        "misconceptions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/MisconceptionRef" }
+        },
+        "lane": { "type": "string", "enum": ["learn", "decision"] },
+        "goal_id": { "type": "string" }
+      }
+    },
+    "KnowledgeHit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "label", "score"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "$ref": "#/$defs/NodeKind" },
+        "label": { "type": "string" },
+        "snippet": { "type": "string" },
+        "status": { "type": "string" },
+        "score": { "type": "number" },
+        "path_ids": { "type": "array", "items": { "type": "string" } },
+        "layer": { "type": "string", "enum": ["keep", "lookup"] }
+      }
+    },
+    "KnowledgeSearchResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["query", "concepts", "claims", "sources", "unknown"],
+      "properties": {
+        "query": { "type": "string" },
+        "goal_id": { "type": "string" },
+        "concepts": { "type": "array", "items": { "$ref": "#/$defs/KnowledgeHit" } },
+        "claims": { "type": "array", "items": { "$ref": "#/$defs/KnowledgeHit" } },
+        "sources": { "type": "array", "items": { "$ref": "#/$defs/KnowledgeHit" } },
+        "unknown": { "type": "boolean" }
+      }
+    },
+    "PracticeStat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["goal_id", "claim_id"],
+      "properties": {
+        "goal_id": { "type": "string" },
+        "claim_id": { "type": "string" },
+        "correct_count": { "type": "integer" },
+        "contrary_count": { "type": "integer" },
+        "gap_count": { "type": "integer" },
+        "use_count": { "type": "integer" },
+        "last_practiced_at": { "type": "string" },
+        "next_review_at": { "type": "string" },
+        "interval_index": { "type": "integer" }
+      }
+    },
+    "MasteryItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "label", "status", "reason"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "type": "string", "enum": ["claim", "concept"] },
+        "label": { "type": "string" },
+        "status": { "type": "string", "enum": ["mastered", "weak", "missing", "ready"] },
+        "reason": { "type": "string" },
+        "claim_ids": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "ContrastCard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["left_id", "left_label", "right_id", "right_label"],
+      "properties": {
+        "left_id": { "type": "string" },
+        "left_label": { "type": "string" },
+        "right_id": { "type": "string" },
+        "right_label": { "type": "string" }
+      }
+    },
+    "ReviewItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claim_id", "label", "due", "reason"],
+      "properties": {
+        "claim_id": { "type": "string" },
+        "label": { "type": "string" },
+        "due": { "type": "boolean" },
+        "reason": { "type": "string" },
+        "next_review_at": { "type": "string" }
+      }
+    },
+    "GapAdvice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "label", "need", "advice"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "type": "string", "enum": ["claim", "concept"] },
+        "label": { "type": "string" },
+        "need": { "type": "string", "enum": ["opposition", "evidence", "claim"] },
+        "advice": { "type": "string" }
+      }
+    },
+    "TopicLearn": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["depth", "breadth", "trend"],
+      "properties": {
+        "goal_id": { "type": "string" },
+        "depth": { "type": "number" },
+        "breadth": { "type": "number" },
+        "trend": { "type": "string" },
+        "mastered": { "type": "integer" },
+        "weak": { "type": "integer" },
+        "missing": { "type": "integer" },
+        "ready": { "type": "integer" },
+        "claims": { "type": "array", "items": { "$ref": "#/$defs/MasteryItem" } },
+        "concepts": { "type": "array", "items": { "$ref": "#/$defs/MasteryItem" } },
+        "contrasts": { "type": "array", "items": { "$ref": "#/$defs/ContrastCard" } },
+        "reviews": { "type": "array", "items": { "$ref": "#/$defs/ReviewItem" } },
+        "gaps": { "type": "array", "items": { "$ref": "#/$defs/GapAdvice" } }
+      }
+    },
+    "PackItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "layer"],
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "layer": { "type": "string", "enum": ["keep", "lookup"] },
+        "reason": { "type": "string" },
+        "overridden": { "type": "boolean" },
+        "source_id": { "type": "string" }
+      }
+    },
+    "OutlineChapter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title"],
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "kind": { "type": "string", "enum": ["concept", "claim", "overview"] },
+        "summary": { "type": "string" },
+        "claim_ids": { "type": "array", "items": { "type": "string" } },
+        "child_count": { "type": "integer" },
+        "pack_keep": { "type": "array", "items": { "$ref": "#/$defs/PackItem" } },
+        "pack_lookup": { "type": "array", "items": { "$ref": "#/$defs/PackItem" } }
+      }
+    },
+    "TopicOutline": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "goal_id": { "type": "string" },
+        "title": { "type": "string" },
+        "intro": { "type": "string" },
+        "chapters": { "type": "array", "items": { "$ref": "#/$defs/OutlineChapter" } },
+        "loose_claims": { "type": "array", "items": { "$ref": "#/$defs/OutlineChapter" } }
+      }
+    },
+    "IndustryHint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "url"],
+      "properties": {
+        "title": { "type": "string" },
+        "url": { "type": "string" },
+        "snippet": { "type": "string" },
+        "matched_node_id": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+        "matched_label": { "type": "string" },
+        "reason": { "type": "string" }
+      }
+    },
+    "Play": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "summary"],
+      "properties": {
+        "id": { "type": "string", "enum": ["read_article", "after_meeting"] },
+        "title": { "type": "string" },
+        "summary": { "type": "string" },
+        "steps": { "type": "array", "items": { "type": "string" } },
+        "kinds": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "PlayContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["play_id", "title", "hint", "at"],
+      "properties": {
+        "play_id": { "type": "string", "enum": ["read_article", "after_meeting"] },
+        "title": { "type": "string" },
+        "hint": { "type": "string" },
+        "at": { "type": "string" }
+      }
+    },
+    "HangProposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "claim_ids", "candidates"],
+      "properties": {
+        "source_id": { "type": "string" },
+        "inbox_id": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+        "claim_ids": { "type": "array", "items": { "type": "string" } },
+        "candidates": { "type": "array" },
+        "proposed_names": { "type": "array", "items": { "type": "string" } },
+        "industry_hints": { "type": "array", "items": { "$ref": "#/$defs/IndustryHint" } },
+        "pack_keep": { "type": "array", "items": { "$ref": "#/$defs/PackItem" } },
+        "pack_lookup": { "type": "array", "items": { "$ref": "#/$defs/PackItem" } }
+      }
+    },
+    "Workbench": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["goals", "inbox", "graph", "brief", "messages"],
+      "properties": {
+        "goals": { "type": "array", "items": { "$ref": "#/$defs/Goal" } },
+        "inbox": { "type": "array", "items": { "$ref": "#/$defs/InboxItem" } },
+        "graph": {
+          "type": "object",
+          "required": ["nodes", "edges"],
+          "properties": {
+            "nodes": { "type": "array", "items": { "$ref": "#/$defs/GraphNode" } },
+            "edges": { "type": "array", "items": { "$ref": "#/$defs/Relation" } }
+          }
+        },
+        "brief": { "anyOf": [{ "$ref": "#/$defs/DecisionBrief" }, { "type": "null" }] },
+        "messages": { "type": "array", "items": { "$ref": "#/$defs/ChatMessage" } },
+        "learn": { "anyOf": [{ "$ref": "#/$defs/TopicLearn" }, { "type": "null" }] },
+        "outline": { "anyOf": [{ "$ref": "#/$defs/TopicOutline" }, { "type": "null" }] },
+        "hangs": { "type": "array", "items": { "$ref": "#/$defs/HangProposal" } },
+        "today": { "type": "object" },
+        "profile": { "type": "object" },
+        "plays": { "type": "array", "items": { "$ref": "#/$defs/Play" } },
+        "play_context": { "anyOf": [{ "$ref": "#/$defs/PlayContext" }, { "type": "null" }] }
+      }
+    }
+  }
+}

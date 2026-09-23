@@ -1,0 +1,19 @@
+{
+  "name": "lynote",
+  "private": true,
+  "license": "MIT",
+  "description": "Person keeps the upper layer. The graph keeps the details.",
+  "scripts": {
+    "dev": "concurrently -n web,api -c cyan,green \"npm run dev:web\" \"npm run dev:api\"",
+    "dev:web": "npm --prefix web run dev",
+    "dev:api": "npm --prefix backend run start",
+    "build": "npm --prefix web run build",
+    "start": "concurrently -n web,api -c cyan,green \"npm run start:web\" \"npm run start:api\"",
+    "start:web": "npm --prefix web run start",
+    "start:api": "npm --prefix backend run start",
+    "setup": "npm install && npm --prefix web install && npm --prefix backend run install:py"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

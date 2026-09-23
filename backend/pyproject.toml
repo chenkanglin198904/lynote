@@ -1,0 +1,29 @@
+[project]
+name = "lynote"
+version = "0.1.0"
+description = "Person keeps the upper layer. The graph keeps the details."
+license = { text = "MIT" }
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115.0",
+  "uvicorn[standard]>=0.32.0",
+  "pydantic>=2.9.0",
+  "pydantic-settings>=2.6.0",
+  "httpx>=0.27.0",
+  "kuzu>=0.11.0",
+  "pypdf>=5.0.0",
+  "pymupdf>=1.24.0",
+  "python-multipart>=0.0.9",
+  "lancedb>=0.17.0",
+]
+
+[project.optional-dependencies]
+dev = ["httpx>=0.27.0", "pytest>=8.3.0"]
+vectors = ["lancedb>=0.17.0"]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["lynote*"]
